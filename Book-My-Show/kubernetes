@@ -3,7 +3,7 @@ Deploy Book-my-show in Kubernetes
 Make sure image is available in Docker hub because 
 Kubernetes pulls container images from registries like Docker Hub by default.
 
-Create namespace hotstar
+Create namespace bms
 kubectl create namespace bms-ns
 
 Create deployment.yml
