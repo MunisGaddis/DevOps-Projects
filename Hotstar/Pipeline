@@ -1,1 +1,114 @@
+pipeline {
+    agent any
 
+    tools {
+        jdk 'jdk17'
+        nodejs 'node16'
+    }
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('Clean workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main', url: 'https://github.com/mudit097/Hotstar-Clone.git'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh """
+                        ${SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectName='Hotstar' \
+                        -Dsonar.projectKey='Hotstar'
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to Quality Gate failure: ${qg.status}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+
+        stage('Docker Scout - Filesystem') {
+            steps {
+                sh 'docker-scout quickview fs://.'
+                sh 'docker-scout cves fs://.'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh 'docker build -t hotstar .'
+                        sh 'docker tag hotstar monudocker334/hotstar:latest'
+                        sh 'docker push monudocker334/hotstar:latest'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Cleanup Local Images') {
+            steps {
+                script {
+                    echo "Cleaning up local Docker images to save space..."
+                    sh """
+                        docker rmi hotstar || true
+                        docker rmi monudocker334/hotstar:latest || true
+                    """
+                }
+            }
+        }
+
+        stage('Docker Scout - Image') {
+            steps {
+                sh 'docker-scout quickview monudocker334/hotstar:latest'
+                sh 'docker-scout cves monudocker334/hotstar:latest'
+                sh 'docker-scout recommendations monudocker334/hotstar:latest'
+            }
+        }
+
+        stage('Deploy Docker') {
+            steps {
+                script {
+                    sh """
+                        docker rm -f hotstar || true
+                        docker run -d --name hotstar -p 3000:3000 monudocker334/hotstar:latest
+                    """
+                }
+            }
+        }
+    }
+}
