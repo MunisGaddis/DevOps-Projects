@@ -1,0 +1,42 @@
+Go to DockerHub account settings
+Generate Personal access Token
+Go to Manage Jenkins
+Credentials --add docker hub user name and Personal access Token
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Code Clone') {
+            steps {
+                git url: "https://github.com/LondheShubham153/two-tier-flask-app.git", branch: "main"
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh "docker build -t two-tier-flask-app ."
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerHubCreds',
+                    usernameVariable: 'dockerHubUser',
+                    passwordVariable: 'dockerHubPass'
+                )]) {
+                    sh 'docker login -u $dockerHubUser -p $dockerHubPass'
+                    sh 'docker tag two-tier-flask-app $dockerHubUser/two-tier-flask-app:latest'
+                    sh 'docker push $dockerHubUser/two-tier-flask-app:latest'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Deployed successfully"
+            }
+        }
+    }
+}
