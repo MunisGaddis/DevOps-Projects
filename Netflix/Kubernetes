@@ -1,0 +1,68 @@
+Deploy Book-my-show in Kubernetes
+
+Make sure image is available in Docker hub because 
+Kubernetes pulls container images from registries like Docker Hub by default.
+
+Create namespace hotstar
+kubectl create namespace netflix-ns
+
+Create deployment.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bms-deployment
+  namespace: netflix-ns
+spec:
+  replicas: 1  # Number of desired replicas
+  selector:
+    matchLabels:
+      app: netflix
+  template:
+    metadata:
+      labels:
+        app: netflix
+    spec:
+      containers:
+      - name: netflix
+        image: monudocker334/netflix:latest
+        ports:
+        - containerPort: 3000  # Port your application listens on
+**************************************************************************************************************
+NodePort lets you expose your application outside the Kubernetes cluster—so you can access it from your 
+laptop, a browser, or any external client.
+
+NodePort makes your app accessible via: http://<NodeIP>:<NodePort>
+
+Create service.yml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: netflix-service
+spec:
+  selector:
+    app: netflix
+  ports:
+    - protocol: TCP
+      port: 80           # Port exposed inside the cluster
+      targetPort: 3000   # Port your application listens on inside the pods
+      nodePort: 30080    # Optional: specify the NodePort (range: 30000-32767)
+  type: NodePort
+***************************************************************************************************************
+Check Deployment and Pods:
+kubectl get deployments -n netflix-ns
+kubectl get pods -n netflix-ns
+
+To get your node IPs: kubectl get nodes -o wide
+From outside the cluster : http://<NodeIP>:30080
+
+To scale to 3 replicas:
+kubectl scale deployment netflix-deployment --replicas=3 -n netflix-ns
+
+✅ To confirm:
+kubectl get deployment netflix-deployment -n -ns
+
+Remove Everything : kubecl delete -f .
+Remove namespace: kubecl delete namespace netflix-ns
+***************************************************************************************************************
