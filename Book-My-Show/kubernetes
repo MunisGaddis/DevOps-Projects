@@ -1,3 +1,9 @@
+Deploy Book-my-show in Kubernetes
+
+Make sure image is available in Docker hub because 
+Kubernetes pulls container images from registries like Docker Hub by default.
+
+Create namespace hotstar
 kubectl create namespace bms-ns
 
 Create deployment.yml
@@ -8,35 +14,55 @@ metadata:
   name: bms-deployment
   namespace: bms-ns
 spec:
-  replicas: 2
+  replicas: 1  # Number of desired replicas
   selector:
     matchLabels:
-      app: bms
+      app: bookmyshow
   template:
     metadata:
       labels:
-        app: bms
+        app: bookmyshow
     spec:
       containers:
-      - name: bms-app
-        image: your-image
+      - name: bookmyshow
+        image: monudocker334/bookmyshow:latest
         ports:
-        - containerPort: 3000
-*******************************************************************************************************
+        - containerPort: 3000  # Port your application listens on
+**************************************************************************************************************
+NodePort lets you expose your application outside the Kubernetes cluster—so you can access it from your 
+laptop, a browser, or any external client.
+
+NodePort makes your app accessible via: http://<NodeIP>:<NodePort>
+
 Create service.yml
 
 apiVersion: v1
 kind: Service
 metadata:
   name: bms-service
-  labels:
-    app: bms
 spec:
-  type: NodePort                # <-- Changed from LoadBalancer to NodePort
-  ports:
-  - port: 80                    # Port inside the cluster
-    targetPort: 3000            # Port inside the Pod
-    nodePort: 30080             # External port on each Node (you can pick any in 30000–32767)
   selector:
-    app: bms
-**********************************************************************************************************
+    app: bookmyshow
+  ports:
+    - protocol: TCP
+      port: 80           # Port exposed inside the cluster
+      targetPort: 3000   # Port your application listens on inside the pods
+      nodePort: 30080    # Optional: specify the NodePort (range: 30000-32767)
+  type: NodePort
+***************************************************************************************************************
+Check Deployment and Pods:
+kubectl get deployments -n bms-ns
+kubectl get pods -n bms-ns
+
+To get your node IPs: kubectl get nodes -o wide
+From outside the cluster : http://<NodeIP>:30080
+
+To scale to 3 replicas:
+kubectl scale deployment bms-deployment --replicas=3 -n bms-ns
+
+✅ To confirm:
+kubectl get deployment bms-deployment -n hotstar-ns
+
+Remove Everything : kubecl delete -f .
+Remove namespace: kubecl delete namespace bms-ns
+***************************************************************************************************************
