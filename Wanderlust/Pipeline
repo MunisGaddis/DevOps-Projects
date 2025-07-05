@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+
+    environment {
+        SONAR_HOME = tool "sonar-scanner"
+    }
+
+    stages {
+        stage('Clone Code from GitHub') {
+            steps {
+                git url: "https://github.com/LondheShubham153/wanderlust.git", branch: "dev"
+            }
+        }
+
+        stage('SonarQube Quality Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh """
+                        "${SONAR_HOME}/bin/sonar-scanner" \
+                        -Dsonar.projectKey=wanderlust \
+                        -Dsonar.projectName=wanderlust \
+                        -Dsonar.sources=.
+                    """
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate Scan') {
+            steps {
+                timeout(time: 2, unit: "MINUTES") {
+                    waitForQualityGate abortPipeline: false
+                }
+            }
+        }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DP-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+
+        stage('Trivy File System Scan') {
+            steps {
+                sh """
+                    trivy fs --exit-code 0 --severity HIGH,CRITICAL --format table -o trivy-report.html .
+                """
+                echo "Trivy filesystem scan completed"
+            }
+        }
+
+        stage('Build and Push Docker Images') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                        # Build frontend image
+                        docker build -t $DOCKER_USER/wanderlust_frontend:latest ./frontend
+
+                        # Build backend image
+                        docker build -t $DOCKER_USER/wanderlust_backend:latest ./backend
+
+                        # Push images
+                        docker push $DOCKER_USER/wanderlust_frontend:latest
+                        docker push $DOCKER_USER/wanderlust_backend:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy using Docker Compose for 10 Minutes') {
+            steps {
+                script {
+                    // Start containers
+                    sh 'docker-compose up -d'
+
+                    // Let them run for 10 minutes
+                    echo 'Sleeping for 10 minutes to let services run...'
+                    sleep(time: 10, unit: 'MINUTES')
+
+                    // Stop containers
+                    sh 'docker-compose down'
+                }
+            }
+        }
+    }
+}
