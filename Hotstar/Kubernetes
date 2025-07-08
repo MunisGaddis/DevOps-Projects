@@ -40,6 +40,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: hotstar-service
+  namespace: hotstar-ns
 spec:
   selector:
     app: hotstar
