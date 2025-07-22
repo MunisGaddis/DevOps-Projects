@@ -100,6 +100,12 @@ Installation of Docker Scout ---> curl -sSfL https://raw.githubusercontent.com/d
 7. Installation of SonarQube
 ************************************
 docker run -d --name sonar -p 9000:9000 sonarqube:lts-community
+or
+docker run -d --name sonar \
+  --restart unless-stopped \
+  -p 9000:9000 \
+  sonarqube:lts-community
+
 docker images
 docker ps
 
