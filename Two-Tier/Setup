@@ -4,25 +4,16 @@ Create AWS Instance t3.medium
 
 # 1. Set the timezone
 sudo timedatectl set-timezone Asia/Kolkata
-
-# 2. Update and upgrade packages
 sudo apt update && sudo apt upgrade -y
 
 # 3. Install Docker
 sudo apt install docker.io -y
-
-# 4. Add the 'ubuntu' user to the 'docker' group
 sudo usermod -aG docker ubuntu
-
-# 5. Apply the new group membership without logging out
 newgrp docker
 
 # 6. Check if Docker is working
 docker ps
 
-# 7. Create and navigate to 'projects' directory
-mkdir projects
-cd projects
 ***************************************************************************************
 git clone https://github.com/LondheShubham153/two-tier-flask-app.git
 
