@@ -1,0 +1,82 @@
+DevOps Project on Kubernetes With ArgoCD 
+
+Create AWS Instance t3.medium
+
+Install docker 
+
+sudo timedatectl set-timezone Asia/Kolkata
+sudo apt update && sudo apt upgrade
+sudo apt install docker.io -y
+
+sudo usermod -aG docker ubuntu && newgrp docker
+
+Install Kind
+
+#!/bin/bash
+# Install KIND
+if [ "$(uname -m)" = "x86_64" ]; then
+  curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64
+  chmod +x ./kind
+  sudo mv ./kind /usr/local/bin/kind
+fi
+
+# Install kubectl
+VERSION="v1.33.1"
+URL="https://dl.k8s.io/release/${VERSION}/bin/linux/amd64/kubectl"
+INSTALL_DIR="/usr/local/bin"
+
+curl -LO "$URL"
+chmod +x kubectl
+sudo mv kubectl $INSTALL_DIR/
+
+# Verify kubectl installation
+kubectl version --client
+
+# Cleanup
+rm -f kubectl
+rm -rf kind
+
+echo "✅ KIND & kubectl installation complete."
+
+***************************************************************************************
+Set up KIND Cluster
+📄 Create nano kind-cluster-config.yaml
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.33.1
+  - role: worker
+    image: kindest/node:v1.33.1
+  - role: worker
+    image: kindest/node:v1.33.1
+****************************************************************************************************************	
+▶ Create the cluster
+kind create cluster --config kind-cluster-config.yaml --name tws
+
+ Installing Argo CD
+Create a namespace for Argo CD:
+
+kubectl create namespace argocd
+
+Apply the Argo CD manifest:
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+Check services in Argo CD namespace:
+kubectl get svc -n argocd
+
+Expose Argo CD server using NodePort:
+kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "NodePort"}}'
+
+Forward ports to access Argo CD server:
+kubectl port-forward -n argocd service/argocd-server 8443:443 --address=0.0.0.0 &
+
+Open browser Enter PublicIP and Port 8443
+
+kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
+************************************************************************************************************************
+
+
+
+
