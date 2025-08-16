@@ -1,5 +1,7 @@
 Two-tier Flask App
 
+Create AWS Instance t3.medium
+
 # 1. Set the timezone
 sudo timedatectl set-timezone Asia/Kolkata
 
