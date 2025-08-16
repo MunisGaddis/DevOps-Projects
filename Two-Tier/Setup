@@ -1,0 +1,106 @@
+Two-tier Flask App
+
+# 1. Set the timezone
+sudo timedatectl set-timezone Asia/Kolkata
+
+# 2. Update and upgrade packages
+sudo apt update && sudo apt upgrade -y
+
+# 3. Install Docker
+sudo apt install docker.io -y
+
+# 4. Add the 'ubuntu' user to the 'docker' group
+sudo usermod -aG docker ubuntu
+
+# 5. Apply the new group membership without logging out
+newgrp docker
+
+# 6. Check if Docker is working
+docker ps
+
+# 7. Create and navigate to 'projects' directory
+mkdir projects
+cd projects
+***************************************************************************************
+git clone https://github.com/LondheShubham153/two-tier-flask-app.git
+
+cd two-tier-flask-app
+
+# Step 1: Build the Flask app
+docker build -t flaskapp .
+
+# Step 2: Create a network
+docker network create twotier
+
+# Step 3: Start MySQL first
+docker run -d --name mysql \
+  --network=twotier \
+  -p 3306:3306 \
+  -e MYSQL_DATABASE=myDb \
+  -e MYSQL_USER=admin \
+  -e MYSQL_PASSWORD=admin \
+  -e MYSQL_ROOT_PASSWORD=admin \
+  mysql:5.7
+
+# Optional: Wait for MySQL to fully start
+sleep 20  # or use a healthcheck
+
+# Step 4: Start Flask app
+docker run -d --name flaskapp \
+  --network=twotier \
+  -p 5000:5000 \
+  -e MYSQL_HOST=mysql \
+  -e MYSQL_PORT=3306 \
+  -e MYSQL_USER=admin \
+  -e MYSQL_PASSWORD=admin \
+  -e MYSQL_DB=myDb \
+  flaskapp:latest
+
+Check Docker networks
+On your AWS EC2 instance:
+
+docker network ls
+
+Inspect your two-tier network
+docker network inspect two-tier
+
+To go inside mysql
+docker exec -it <container_id_or_name> bash
+(You can get the container ID or name by running docker ps)
+
+Access the MySQL CLI
+mysql -u root -p
+
+When prompted, enter:
+admin
+
+Check available databases
+SHOW DATABASES;
+
+Select your database
+(Your earlier docker run used MYSQL_DATABASE=myDb, so note the case sensitivity.)
+USE myDb;
+
+Create the messages table
+
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message TEXT
+);
+
+Verify table creation
+SHOW TABLES;
+
+Add some data 
+
+select * from messages;
+
+Now Tag the image
+Create Personal Token
+docker login
+Enter user name and Password
+
+docker tag flaskapp:latest monudocker334/flaskapp:latest
+docker push monudocker334/flaskapp:latest
+
+***************************************************************************************
